@@ -1,7 +1,7 @@
 {
-  "name": "Cover Time-based",
+  "name": "Time-based Cover (with Buttons)",
   "render_readme": true,
-  "country": "ES",
+  "country": "DE",
   "homeassistant": "2024.1.0",
   "content_in_root": false,
   "zip_release": false

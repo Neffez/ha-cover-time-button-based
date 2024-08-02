@@ -1,13 +1,13 @@
 {
   "domain": "cover_time_based",
-  "name": "Switch to Time-based Cover",
+  "name": "Time-based Cover (with Buttons)",
   "codeowners": [
-    "@duhow"
+    "@Neffez"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/duhow/hass-cover-time-based/tree/main",
+  "documentation": "https://github.com/Neffez/ha-cover-time-button-based",
   "integration_type": "helper",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/duhow/hass-cover-time-based/issues",
+  "issue_tracker": "https://github.com/Neffez/ha-cover-time-button-based/issues",
   "version": "0.1.2"
 }

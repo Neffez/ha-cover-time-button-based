@@ -1,4 +1,4 @@
-"""Cover support for switch entities."""
+"""Cover support for button entities."""
 from __future__ import annotations
 
 import logging
@@ -14,8 +14,6 @@ from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.const import SERVICE_CLOSE_COVER
 from homeassistant.const import SERVICE_OPEN_COVER
 from homeassistant.const import SERVICE_STOP_COVER
-from homeassistant.const import STATE_OFF
-from homeassistant.const import STATE_ON
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.const import STATE_UNKNOWN
 from homeassistant.core import callback
@@ -71,7 +69,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Initialize Cover Switch config entry."""
+    """Initialize Cover config entry."""
     registry = er.async_get(hass)
 
     entity_up = er.async_validate_entity_id(
@@ -102,18 +100,18 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
         name,
         travel_time_down,
         travel_time_up,
-        open_switch_entity_id,
-        close_switch_entity_id,
+        open_button_entity_id,
+        close_button_entity_id,
     ):
         """Initialize the cover."""
         if not travel_time_down:
             travel_time_down = travel_time_up
         self._travel_time_down = travel_time_down
         self._travel_time_up = travel_time_up
-        self._open_switch_state = STATE_OFF
-        self._open_switch_entity_id = open_switch_entity_id
-        self._close_switch_state = STATE_OFF
-        self._close_switch_entity_id = close_switch_entity_id
+        self._open_button_state = STATE_UNKNOWN
+        self._open_button_entity_id = open_button_entity_id
+        self._close_button_state = STATE_UNKNOWN
+        self._close_button_entity_id = close_button_entity_id
         self._name = name
         self._attr_unique_id = unique_id
 
@@ -124,7 +122,7 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
     async def async_added_to_hass(self):
         """Only cover's position matters."""
         """The rest is calculated from this attribute."""
-        # Listen to all change events, look for switch/light press
+        # Listen to all change events, look for button press
         self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._handle_state_changed)
         old_state = await self.async_get_last_state()
         _LOGGER.debug("async_added_to_hass :: oldState %s", old_state)
@@ -136,12 +134,12 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
             self.tc.set_position(int(old_state.attributes.get(ATTR_CURRENT_POSITION)))
 
     async def _handle_state_changed(self, event):
-        """Process changes in Home Assistant, look if switch is opened
+        """Process changes in Home Assistant, look if button is pressed
         manually."""
-        # If switch/light is not the target, skip
+        # If button is not the target, skip
         if event.data.get(ATTR_ENTITY_ID) not in [
-            self._close_switch_entity_id,
-            self._open_switch_entity_id,
+            self._close_button_entity_id,
+            self._open_button_entity_id,
         ]:
             return
 
@@ -154,53 +152,34 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
         if event.data.get("new_state").state == event.data.get("old_state").state:
             return
 
-        # Target switch/light
-        if event.data.get(ATTR_ENTITY_ID) == self._close_switch_entity_id:
-            if self._close_switch_state == event.data.get("new_state").state:
+        # Target button
+        if event.data.get(ATTR_ENTITY_ID) == self._close_button_entity_id:
+            if self._close_button_state == event.data.get("new_state").state:
                 return
-            self._close_switch_state = event.data.get("new_state").state
-        elif event.data.get(ATTR_ENTITY_ID) == self._open_switch_entity_id:
-            if self._open_switch_state == event.data.get("new_state").state:
+            self._close_button_state = event.data.get("new_state").state
+        elif event.data.get(ATTR_ENTITY_ID) == self._open_button_entity_id:
+            if self._open_button_state == event.data.get("new_state").state:
                 return
-            self._open_switch_state = event.data.get("new_state").state
+            self._open_button_state = event.data.get("new_state").state
 
-        # Set unavailable if any of the switches becomes unavailable
+        # Set unavailable if any of the buttons becomes unavailable
         self._attr_available = not any(
             [
-                self._open_switch_state == STATE_UNAVAILABLE,
-                self._close_switch_state == STATE_UNAVAILABLE,
+                self._open_button_state == STATE_UNAVAILABLE,
+                self._close_button_state == STATE_UNAVAILABLE,
             ]
         )
 
-        # Handle new status
-        if (
-            self._open_switch_state == STATE_OFF
-            and self._close_switch_state == STATE_OFF
-        ):
-            _LOGGER.debug(f"{self._name}: open/close: off/off, stopping")
-            return await self.async_stop_cover()
-        elif (
-            self._open_switch_state == STATE_ON and self._close_switch_state == STATE_ON
-        ):
-            _LOGGER.debug(f"{self._name}: open/close: on/on, turning off both switches")
-            return await self.async_stop_cover()
-        elif (
-            self._open_switch_state == STATE_ON
-            and self._close_switch_state == STATE_OFF
-        ):
-            await self.async_open_cover(handle_command=False)
-        elif (
-            self._open_switch_state == STATE_OFF
-            and self._close_switch_state == STATE_ON
-        ):
-            await self.async_close_cover(handle_command=False)
-
-    def _handle_my_button(self):
-        """Handle the MY button press."""
-        if self.tc.is_traveling():
-            _LOGGER.debug("_handle_my_button :: button stops cover")
-            self.tc.stop()
-            self.stop_auto_updater()
+        if event.data.get(ATTR_ENTITY_ID) == self._close_button_entity_id:
+            if self.is_closing:
+                return await self.async_stop_cover(handle_command=False)
+            else:
+                await self.async_close_cover(handle_command=False)
+        elif event.data.get(ATTR_ENTITY_ID) == self._open_button_entity_id:
+            if self.is_opening:
+                return await self.async_stop_cover(handle_command=False)
+            else:
+                await self.async_open_cover(handle_command=False)
 
     @property
     def name(self):
@@ -230,6 +209,10 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
             and self.tc.travel_direction == TravelStatus.DIRECTION_DOWN
         )
 
+    def was_opening(self):
+        """Return if the cover was opening or not."""
+        return self.tc.travel_direction == TravelStatus.DIRECTION_DOWN
+
     @property
     def is_closing(self):
         """Return if the cover is closing or not."""
@@ -238,21 +221,25 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
             and self.tc.travel_direction == TravelStatus.DIRECTION_UP
         )
 
+    def was_closing(self):
+        """Return if the cover was closing or not."""
+        return self.tc.travel_direction == TravelStatus.DIRECTION_UP
+
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        return self.current_cover_position is None or self.current_cover_position <= 10
+        return self.current_cover_position is None or self.current_cover_position == 0
 
     @property
     def assumed_state(self):
-        """Return True because covers can be stopped midway."""
-        return True
+        """Return False to lock respective buttons when open/closed."""
+        return False
 
     async def check_availability(self) -> None:
         """Check if any of the entities is unavailable and update status."""
-        for entity in [self._close_switch_entity_id, self._open_switch_entity_id]:
+        for entity in [self._close_button_entity_id, self._open_button_entity_id]:
             state = self.hass.states.get(entity)
-            if state.state in [STATE_UNAVAILABLE, STATE_UNKNOWN]:
+            if state.state in [STATE_UNAVAILABLE]:
                 self._attr_available = False
                 return
         self._attr_available = True
@@ -293,10 +280,15 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
         """Turn the device stop."""
         _LOGGER.debug("async_stop_cover")
         await self.check_availability()
+        if self.tc.is_traveling() is False:
+            return
         if not self.available:
             return
-        await self._async_handle_command(SERVICE_STOP_COVER)
-        self._handle_my_button()
+        if kwargs.get("handle_command") is not False:
+            await self._async_handle_command(SERVICE_STOP_COVER)
+        if self.tc.is_traveling():
+            self.tc.stop()
+            self.stop_auto_updater()
 
     async def set_position(self, position):
         _LOGGER.debug("set_position")
@@ -357,53 +349,44 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
             await self._async_handle_command(SERVICE_STOP_COVER)
             self.tc.stop()
 
-    async def _async_handle_command(self, command, *args):
+    async def _async_handle_command(self, command):
+        _LOGGER.debug("_async_handle_command :: %s", command)
         if command == SERVICE_CLOSE_COVER:
             self._state = False
             await self.hass.services.async_call(
-                "homeassistant",
-                "turn_off",
-                {"entity_id": self._open_switch_entity_id},
-                False,
-            )
-            await self.hass.services.async_call(
-                "homeassistant",
-                "turn_on",
-                {"entity_id": self._close_switch_entity_id},
+                "button",
+                "press",
+                {"entity_id": self._close_button_entity_id},
                 True,
             )
 
         elif command == SERVICE_OPEN_COVER:
             self._state = True
             await self.hass.services.async_call(
-                "homeassistant",
-                "turn_off",
-                {"entity_id": self._close_switch_entity_id},
-                False,
-            )
-            await self.hass.services.async_call(
-                "homeassistant",
-                "turn_on",
-                {"entity_id": self._open_switch_entity_id},
+                "button",
+                "press",
+                {"entity_id": self._open_button_entity_id},
                 True,
             )
 
         elif command == SERVICE_STOP_COVER:
             self._state = True
-            await self.hass.services.async_call(
-                "homeassistant",
-                "turn_off",
-                {"entity_id": self._close_switch_entity_id},
-                False,
-            )
-            await self.hass.services.async_call(
-                "homeassistant",
-                "turn_off",
-                {"entity_id": self._open_switch_entity_id},
-                False,
-            )
+            _LOGGER.debug("self.tc.travel_direction :: %s", self.tc.travel_direction)
 
-        _LOGGER.debug("_async_handle_command :: %s", command)
+            if self.tc.travel_direction == TravelStatus.DIRECTION_UP:
+                await self.hass.services.async_call(
+                    "button",
+                    "press",
+                    {"entity_id": self._close_button_entity_id},
+                    True,
+                )
+            elif self.tc.travel_direction == TravelStatus.DIRECTION_DOWN:
+                await self.hass.services.async_call(
+                    "button",
+                    "press",
+                    {"entity_id": self._open_button_entity_id},
+                    True,
+                )
 
         # Update state of entity
         self.async_write_ha_state()

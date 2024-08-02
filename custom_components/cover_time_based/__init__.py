@@ -1,4 +1,4 @@
-"""Component to wrap switch entities in entities of other domains."""
+"""Component to wrap button entities in entities of other domains."""
 from __future__ import annotations
 
 import logging
@@ -31,8 +31,8 @@ def async_add_to_device(
     device_id = None
 
     if (
-        not (wrapped_switch := registry.async_get(entity_id))
-        or not (device_id := wrapped_switch.device_id)
+        not (wrapped_button := registry.async_get(entity_id))
+        or not (device_id := wrapped_button.device_id)
         or not (device_registry.async_get(device_id))
     ):
         return device_id
@@ -43,7 +43,7 @@ def async_add_to_device(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Check light-swich up and down exist."""
+    """Check button up and down exist."""
     registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
     try:
@@ -73,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await hass.config_entries.async_reload(entry.entry_id)
 
         if device_id and "device_id" in data["changes"]:
-            # If the tracked switch is no longer in the device, remove our config entry
+            # If the tracked button is no longer in the device, remove our config entry
             # from the device
             if (
                 not (entity_entry := registry.async_get(data[CONF_ENTITY_ID]))
@@ -118,33 +118,33 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """
     registry = er.async_get(hass)
     try:
-        switch_entity_id = er.async_validate_entity_id(
+        button_entity_id = er.async_validate_entity_id(
             registry, entry.options[CONF_ENTITY_ID]
         )
     except vol.Invalid:
         # The source entity has been removed from the entity registry
         return
 
-    if not (switch_entity_entry := registry.async_get(switch_entity_id)):
+    if not (button_entity_entry := registry.async_get(button_entity_id)):
         return
 
     # Unhide the wrapped entity
-    if switch_entity_entry.hidden_by == er.RegistryEntryHider.INTEGRATION:
-        registry.async_update_entity(switch_entity_id, hidden_by=None)
+    if button_entity_entry.hidden_by == er.RegistryEntryHider.INTEGRATION:
+        registry.async_update_entity(button_entity_id, hidden_by=None)
 
-    switch_as_x_entries = er.async_entries_for_config_entry(registry, entry.entry_id)
-    if not switch_as_x_entries:
+    button_as_x_entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+    if not button_as_x_entries:
         return
 
-    switch_as_x_entry = switch_as_x_entries[0]
+    button_as_x_entry = button_as_x_entries[0]
 
     # Restore assistant expose settings
     expose_settings = exposed_entities.async_get_entity_settings(
-        hass, switch_as_x_entry.entity_id
+        hass, button_as_x_entry.entity_id
     )
     for assistant, settings in expose_settings.items():
         if (should_expose := settings.get("should_expose")) is None:
             continue
         exposed_entities.async_expose_entity(
-            hass, assistant, switch_entity_id, should_expose
+            hass, assistant, button_entity_id, should_expose
         )

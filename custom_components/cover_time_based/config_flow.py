@@ -25,12 +25,12 @@ CONFIG_FLOW = {
                 vol.Required(CONF_NAME): selector.TextSelector(),
                 vol.Required(CONF_ENTITY_UP): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain=[Platform.SWITCH, Platform.LIGHT]
+                        domain=[Platform.BUTTON]
                     )
                 ),
                 vol.Required(CONF_ENTITY_DOWN): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain=[Platform.SWITCH, Platform.LIGHT]
+                        domain=[Platform.BUTTON]
                     )
                 ),
                 vol.Required(CONF_TIME_OPEN, default=25): selector.NumberSelector(

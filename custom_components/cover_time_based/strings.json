@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Create a Cover time-based from other entities",
-        "description": "Pick two switches or lights that you want to show up in Home Assistant as a cover. The original entities will be hidden.",
+        "description": "Pick two buttons that you want to show up in Home Assistant as a cover. The original entities will be hidden.",
         "data": {
           "name": "Name",
           "up": "Up",
