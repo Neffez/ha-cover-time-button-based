@@ -12,10 +12,11 @@ E.g.:
 * At time 20 TravelCalculator will return position 70 (final position not reached).
 * At time 30 TravelCalculator will return position 60 (final position reached).
 """
+
 from __future__ import annotations
 
-import time
 from enum import Enum
+import time
 
 
 class TravelStatus(Enum):
@@ -115,13 +116,13 @@ class TravelCalculator:
     def is_opening(self) -> bool:
         """Return if the cover is opening."""
         return (
-            self.is_traveling() and self.travel_direction == TravelStatus.DIRECTION_UP
+                self.is_traveling() and self.travel_direction == TravelStatus.DIRECTION_UP
         )
 
     def is_closing(self) -> bool:
         """Return if the cover is closing."""
         return (
-            self.is_traveling() and self.travel_direction == TravelStatus.DIRECTION_DOWN
+                self.is_traveling() and self.travel_direction == TravelStatus.DIRECTION_DOWN
         )
 
     def position_reached(self) -> bool:
@@ -144,17 +145,13 @@ class TravelCalculator:
 
         def position_reached_or_exceeded(relative_position: int) -> bool:
             """Return if designated position was reached."""
-            if (
-                relative_position <= 0
-                and self.travel_direction == TravelStatus.DIRECTION_DOWN
-            ):
-                return True
-            if (
-                relative_position >= 0
-                and self.travel_direction == TravelStatus.DIRECTION_UP
-            ):
-                return True
-            return False
+            return (
+                    relative_position <= 0
+                    and self.travel_direction == TravelStatus.DIRECTION_DOWN
+            ) or (
+                    relative_position >= 0
+                    and self.travel_direction == TravelStatus.DIRECTION_UP
+            )
 
         if position_reached_or_exceeded(relative_position):
             return self._travel_to_position
@@ -167,8 +164,8 @@ class TravelCalculator:
             return self._travel_to_position
 
         progress = (
-            time.time() - self._last_known_position_timestamp
-        ) / remaining_travel_time
+                           time.time() - self._last_known_position_timestamp
+                   ) / remaining_travel_time
         return int(self._last_known_position + relative_position * progress)
 
     def calculate_travel_time(self, from_position: int, to_position: int) -> float:
