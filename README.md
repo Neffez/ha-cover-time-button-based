@@ -1,4 +1,4 @@
-# Time Based Cover
+# Button and Time Based Cover
 
 Converts 2 `button` for each up and down into a `cover`. Only works if each button stops the movement if pressed a second time in succession.
 
