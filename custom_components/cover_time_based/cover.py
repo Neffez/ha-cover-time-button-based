@@ -228,7 +228,13 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        return self.current_cover_position is None or self.current_cover_position == 0
+        return self.current_cover_position == 0
+
+    @property
+    def is_open(self) -> bool:
+        """Return if cover is open."""
+        return self.current_cover_position == 100
+
 
     @property
     def assumed_state(self):
@@ -346,7 +352,8 @@ class CoverTimeBased(CoverEntity, RestoreEntity):
         """Do auto stop if necessary."""
         if self.position_reached():
             _LOGGER.debug("auto_stop_if_necessary :: calling stop command")
-            await self._async_handle_command(SERVICE_STOP_COVER)
+            if not (self.is_closed or self.is_open):
+                await self._async_handle_command(SERVICE_STOP_COVER)
             self.tc.stop()
 
     async def _async_handle_command(self, command):
